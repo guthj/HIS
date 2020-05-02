@@ -1,5 +1,32 @@
 import RPi.GPIO as GPIO
 import time
+import sys
+import cirp
+import os
+
+os.chdir(os.path.dirname(__file__))
+addr = 0x20
+
+chirp1 = Chirp(address=0x20,
+                  read_moist=True,
+                  read_temp=True,
+                  read_light=True,
+                  min_moist=min_moist,
+                  max_moist=max_moist,
+                  temp_scale='celsius',
+                  temp_offset=0)
+chirp2 = Chirp(address=0x21,
+                  read_moist=True,
+                  read_temp=True,
+                  read_light=True,
+                  min_moist=min_moist,
+                  max_moist=max_moist,
+                  temp_scale='celsius',
+                  temp_offset=0)
+
+
+
+
 GPIO.cleanup()
 GPIO.setmode(GPIO.BCM) # GPIO Numbers instead of board numbers
 GPIOPins = [4,17,27,22,10,9,11,8]
@@ -60,3 +87,12 @@ playRelay()
 #measure()
 
 GPIO.cleanup()
+
+print (chirp)
+print ("Moisture\tTemperature\tBrightness")
+while True:
+    
+	print ("S1: %d\t%d\t%d" % (chirp1.moist(), chirp1.temp(), chirp1.light()))
+    
+    print ("S2: %d\t%d\t%d" % (chirp2.moist(), chirp2.temp(), chirp2.light()))
+	time.sleep(1)
