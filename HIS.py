@@ -43,7 +43,7 @@ USEchoPin = 15
 for i in GPIOPins:
     
         GPIO.setup(i, GPIO.OUT) # GPIO Assign mode
-        GPIO.output(i, GPIO.LOW) #
+        GPIO.output(i, GPIO.HIGH) #
 
 
 GPIO.setup(USTriggerPin,GPIO.OUT)
@@ -59,14 +59,14 @@ def openValve(pin):
     GPIO.output(pin, GPIO.HIGH)
 
 def closeAllValves():
-    GPIO.output(pumpPin, GPIO.LOW)
+    GPIO.output(pumpPin, GPIO.HIGH)
     for pin in valvePins:
-        GPIO.output(pin, GPIO.LOW)
+        GPIO.output(pin, GPIO.HIGH)
 
 def runPump(time):
-    GPIO.output(pumpPin, GPIO.HIGH)
-    sleep(time)
     GPIO.output(pumpPin, GPIO.LOW)
+    sleep(time)
+    GPIO.output(pumpPin, GPIO.HIGH)
 
 def getMoisture(addr, bus):
     mois = bus.read_word_data(addr, 0)
