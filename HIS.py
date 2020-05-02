@@ -4,7 +4,7 @@ import sys
 import os
 
 os.chdir(os.path.dirname(__file__))
-import cirp
+import chirp
 
 addr = 0x20
 
