@@ -91,8 +91,6 @@ GPIO.cleanup()
 print (chirp)
 print ("Moisture\tTemperature\tBrightness")
 while True:
-    
 	print ("S1: %d\t%d\t%d" % (chirp1.moist(), chirp1.temp(), chirp1.light()))
-    
     	print ("S2: %d\t%d\t%d" % (chirp2.moist(), chirp2.temp(), chirp2.light()))
 	time.sleep(1)
