@@ -33,9 +33,9 @@ GPIO.cleanup()
 GPIO.setmode(GPIO.BCM) # GPIO Numbers instead of board numbers
 GPIOPins = [4,17,27,22,10,9,11,8]
 
-powerOutletPins = [GPIOPins[0], GPIOPins[1]]
-pumpPin = powerOutletPins[0]
-valvePins = [GPIOPins[2], GPIOPins[3],GPIOPins[4],GPIOPins[5]]
+powerOutletPins = [GPIOPins[6], GPIOPins[7]]
+pumpPin = GPIOPins[7]
+valvePins = [GPIOPins[0], GPIOPins[1],GPIOPins[2],GPIOPins[3]]
 
 USTriggerPin = 14
 USEchoPin = 15
@@ -56,7 +56,7 @@ log("Waiting For Everything To Settle")
 sleep(2)
 
 def openValve(pin):
-    GPIO.output(pin, GPIO.HIGH)
+    GPIO.output(pin, GPIO.LOW)
 
 def closeAllValves():
     GPIO.output(pumpPin, GPIO.HIGH)
