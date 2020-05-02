@@ -86,7 +86,7 @@ def checkAndWater():
     wateringNeeded = False
     for i in range(len(addr)):     
         average = 0.0
-        for i in range(5):
+        for i2 in range(5):
             average = getMoisture(addr[i], i2cbus)/5
             sleep(2)
         moistureArray.append(average)
