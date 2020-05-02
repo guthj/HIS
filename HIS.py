@@ -1,10 +1,11 @@
 import RPi.GPIO as GPIO
 import time
 import sys
-import cirp
 import os
 
 os.chdir(os.path.dirname(__file__))
+import cirp
+
 addr = 0x20
 
 chirp1 = Chirp(address=0x20,
