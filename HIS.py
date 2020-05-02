@@ -29,7 +29,7 @@ def log(text):
 
 
 # GPIO setup
-GPIO.cleanup()
+# GPIO.cleanup()
 GPIO.setmode(GPIO.BCM) # GPIO Numbers instead of board numbers
 GPIOPins = [4,17,27,22,10,9,11,8]
 
@@ -87,8 +87,10 @@ def checkAndWater():
     for i in range(len(addr)):     
         average = 0.0
         for i2 in range(5):
-            average = getMoisture(addr[i], i2cbus)/5
-            sleep(2)
+            moist = getMoisture(addr[i], i2cbus)
+            log(str(moist))
+            average = moist/5
+            #sleep(2)
         moistureArray.append(average)
         log("Current moisture for "+str(hex(addr[i]))+"("+str(i)+"): " + str(average))
 
@@ -145,9 +147,8 @@ def measureUS():
     
 if __name__ == "__main__":
     scheduler = BackgroundScheduler()
-    scheduler.add_listener(ap_my_listener, apscheduler.events.EVENT_JOB_ERROR)
-    
-    scheduler.add_job(checkAndWater, 'interval', minutes=1)
+    scheduler.start()
+    scheduler.add_job(checkAndWater, 'interval', minutes=2)
 
     #measure()
 
