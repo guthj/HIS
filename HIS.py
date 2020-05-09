@@ -14,6 +14,8 @@ os.chdir(os.path.dirname(__file__))
 distanceEmpty = 5.0
 distanceFull = 50.0
 
+savetyFromLooseMoistureSensor = True
+
 from smbus2 import SMBus
 i2cbus = SMBus(1)
 
@@ -204,7 +206,7 @@ def checkAndWater():
         percMoisture = convertMtoPerc(i,average)
 
         if percMoisture < targetMoisture[i] and enableAutomaticWatering:
-            if percMoisture > 10:
+            if (percMoisture > 10) or (savetyFromLooseMoistureSensor == False):
                 wateringNeeded = True
                 openValve(valvePins[i])
                 log("Opening Valve " + str(i),2)
