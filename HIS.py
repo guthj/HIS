@@ -286,7 +286,7 @@ def getPercFullTank():
     return int(distanceEmpty - averageDist)*100/(distanceEmpty-distanceFull)
 
 def writeNewTargetMoistures():
-    with open(pathMoisture, 'wb') as csvfile:
+    with open(pathMoisture, 'w') as csvfile:
         csvwriter = csv.writer(csvfile, delimiter=',',quotechar='"', quoting=csv.QUOTE_MINIMAL)
         csvwriter.writerow(["Moisture"]+targetMoisture)
     log("values saved",2)
