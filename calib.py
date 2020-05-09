@@ -9,8 +9,7 @@ from smbus2 import SMBus
 #from time import sleep
 import csv
 
-import os.path as path
-import os.makedirs as makedir
+import os 
 
 i2cbus = SMBus(1)
 
@@ -19,8 +18,8 @@ addr = [0x20,0x21,0x30,0x31]
 minval = [999,999,999,999]
 maxval = [0,0,0,0]
 
-if not path.exists("/home/pi/.HIS"):
-    makedir("/home/pi/.HIS")
+if not os.path.exists("/home/pi/.HIS"):
+    os.makedirs("/home/pi/.HIS")
     
 
 def getMoisture(addr, bus):
