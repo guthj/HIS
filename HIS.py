@@ -28,7 +28,7 @@ targetMoisture=[]
 for add in addr:
     sensorMin.append(200)
     sensorMax.append(500)
-    targetMoisture.append(300)
+    targetMoisture.append(60)
 
 runPumpSec = 20
 
