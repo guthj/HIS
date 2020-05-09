@@ -30,6 +30,8 @@ for add in addr:
 
 runPumpSec = 20
 
+enableAutomaticWatering = True
+
 debuglevel = 5 
 # 0 none
 # 1 error
@@ -54,7 +56,7 @@ def log(text, level):
 
 
 # GPIO setup
-# GPIO.cleanup()
+GPIO.cleanup()
 GPIO.setmode(GPIO.BCM) # GPIO Numbers instead of board numbers
 GPIOPins = [4,17,27,22,10,9,11,8]
 
@@ -62,8 +64,8 @@ powerOutletPins = [GPIOPins[6], GPIOPins[7]]
 pumpPin = GPIOPins[7]
 valvePins = [GPIOPins[0], GPIOPins[1],GPIOPins[2],GPIOPins[3]]
 
-USTriggerPin = 14
-USEchoPin = 15
+USTriggerPin = 24
+USEchoPin = 23
 
 for i in GPIOPins:
     
@@ -76,9 +78,8 @@ GPIO.setup(USEchoPin,GPIO.IN)
 GPIO.output(USTriggerPin, False)
 
 
-log("Waiting For Everything To Settle",2)
 
-sleep(2)
+
 
 #Setup MQTT:
 def on_connect(client, userdata, flags, rc):
@@ -117,24 +118,22 @@ def on_message(client, userdata, msg):
 
 
         if msg.topic == "HIS/"+plant+"/WaterTarget/setIncrease":
-            state.Moisture_Threshold +=1
-            state.Alarm_Moisture = state.Moisture_Threshold -5
-            client.publish("HIS/"+plant+"/WaterTarget/Target", state.Moisture_Threshold)
+            targetMoisture[i] +=1
+            client.publish("HIS/"+plant+"/WaterTarget/Target", targetMoisture[i])
         if msg.topic == "HIS/"+plant+"/WaterTarget/setDecrease":
-            state.Moisture_Threshold -= 1
-            state.Alarm_Moisture = state.Moisture_Threshold -5
-            client.publish("HIS/"+plant+"/WaterTarget/Target", state.Moisture_Threshold)
+            targetMoisture[i] -= 1
+            client.publish("HIS/"+plant+"/WaterTarget/Target", targetMoisture[i])
             
             
     if msg.topic == "HIS/enableAutomaticWatering/setOn":
         if msg.payload == "true":
             client.publish("HIS/enableAutomaticWatering/getOn", "true")
-            state.enableAutomaticWatering = True
-            log("Tried turning on enableAutomaticWatering, new State: " + str (state.enableAutomaticWatering),2)
+            enableAutomaticWatering = True
+            log("Tried turning on enableAutomaticWatering, new State: " + str (enableAutomaticWatering),2)
         if msg.payload == "false":
             client.publish("HIS/enableAutomaticWatering/getOn", "false")
-            state.enableAutomaticWatering = False
-            log("tried turning off enableAutomaticWatering, new State: " + str (state.enableAutomaticWatering),2)
+            enableAutomaticWatering = False
+            log("tried turning off enableAutomaticWatering, new State: " + str (enableAutomaticWatering),2)
 
             
         
@@ -197,14 +196,14 @@ def checkAndWater():
         
         percMoisture = convertMtoPerc(i,average)
 
-        if percMoisture < targetMoisture[i]:
+        if percMoisture < targetMoisture[i] and enableAutomaticWatering:
             wateringNeeded = True
             openValve(valvePins[i])
             log("Opening Valve " + str(i),2)
         #sleep for nicer sound
         sleep(1)
     
-    if wateringNeeded:
+    if wateringNeeded and enableAutomaticWatering:
         log("Waiting for Valves to open fully", 2)
         sleep (10)
         runPump(runPumpSec)
@@ -259,9 +258,9 @@ def readSettingFiles():
             log("Setting Moisture Target Values",2)
             csvReader = csv.reader(csvDataFile)
             for row in csvReader:
-                for cell in range(1,len(row)):
-                    log("Sens "+str(hex(addr[i-1]))+ ": "+ cell,2)
-                    targetMoisture[i-1] = int(row[cell])
+                for i in range(1,len(row)):
+                    log("Sens "+str(hex(addr[i-1]))+ ": "+ row[i],2)
+                    targetMoisture[i-1] = int(row[i])
     except:
         print("Unable to get Moisture Setting File",1)
         
@@ -313,6 +312,9 @@ if __name__ == "__main__":
     client.loop_start()
     log("MQTT Started",2)
     
+    log("Waiting For Everything To Settle",2)
+    sleep(2)
+
     scheduler = BackgroundScheduler()
     scheduler.start()
     scheduler.add_job(checkAndWater, 'interval', minutes=2)
