@@ -33,12 +33,19 @@ try:
             
 except KeyboardInterrupt:  
     print ("exiting program and saving max and min values" )
+    print (minval[0],minval[1],minval[2],minval[3])
+    print (maxval[0],maxval[1],maxval[2],maxval[3])
+
     with open('settingsMSensor.csv', 'wb') as csvfile:
         spamwriter = csv.writer(csvfile, delimiter=',',quotechar='"', quoting=csv.QUOTE_MINIMAL)
         spamwriter.writerow(minval)
         spamwriter.writerow(maxval)
     print("values saved")
-
+    with open('/home/pi/.HIS/settingsMSensor.csv', 'wb') as csvfile:
+        spamwriter = csv.writer(csvfile, delimiter=',',quotechar='"', quoting=csv.QUOTE_MINIMAL)
+        spamwriter.writerow(minval)
+        spamwriter.writerow(maxval)
+    print("values saved2")
 
 finally:  
     print ("done")
