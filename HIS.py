@@ -95,13 +95,14 @@ def on_connect(client, userdata, flags, rc):
 
     # Subscribing in on_connect() means that if we lose the connection and
     # reconnect then subscriptions will be renewed.
-
-    client.subscribe("HIS/Plant0/Pump/setOn")
+    
+    for i in range(len(addr)):
+        client.subscribe("HIS/Plant"+str(i)+"/Pump/setOn")
+        client.subscribe("HIS/Plant"+str(i)+"/WaterTarget/setIncrease")
+        client.subscribe("HIS/Plant"+str(i)+"/WaterTarget/setDecrease")
+    
     client.subscribe("HIS/enableAutomaticWatering/setOn")
-    client.subscribe("HIS/displayONMode/setOn")
-    client.subscribe("HIS/runLEDs/setOn")
-    client.subscribe("HIS/WaterTarget/setIncrease")
-    client.subscribe("HIS/WaterTarget/setDecrease")
+
 
 def on_message(client, userdata, msg):
     print(msg.topic+" "+str(msg.payload))
@@ -122,10 +123,11 @@ def on_message(client, userdata, msg):
         if msg.topic == "HIS/"+plant+"/WaterTarget/setIncrease":
             targetMoisture[i] +=1
             client.publish("HIS/"+plant+"/WaterTarget/Target", targetMoisture[i])
+            writeNewTargetMoistures()
         if msg.topic == "HIS/"+plant+"/WaterTarget/setDecrease":
             targetMoisture[i] -= 1
             client.publish("HIS/"+plant+"/WaterTarget/Target", targetMoisture[i])
-            
+            writeNewTargetMoistures()
             
     if msg.topic == "HIS/enableAutomaticWatering/setOn":
         if msg.payload == "true":
@@ -182,10 +184,16 @@ def checkAndWater():
     #fist check if water in tank:
     percTank = getPercFullTank()
     log("Tank " + str(percTank) + "% full",2)
+    if percTank >100:
+        percTank = 100
+    if percTank <0:
+        percTank = 0
+    client.publish("HIS/Reservoir/Percentage", int(percTank))
     alarmTankEmpty = False
     if percTank <= 5:
         alarmTankEmpty = True
         log("Tank empty, sending alarm soon, trying to water anyway",1)
+    
 
     
     
@@ -204,6 +212,10 @@ def checkAndWater():
         log("Current moisture for "+str(hex(addr[i]))+"("+str(i)+"): " + str(average)+" ("+str(convertMtoPerc(i,moist))+"%)",3)
         
         percMoisture = convertMtoPerc(i,average)
+        client.publish("HIS/Plant"+str(i)+"/Moisture", int(percMoisture))
+        client.publish("HIS/Plant"+str(i)+"/WaterTarget/Target", int(targetMoisture[i]))
+        client.publish("HIS/Plant"+str(i)+"/WaterTarget/getDecrease", "false")
+        client.publish("HIS/Plant"+str(i)+"/WaterTarget/getIncrease", "false")
 
         if percMoisture < targetMoisture[i] and enableAutomaticWatering:
             if (percMoisture > 10) or (savetyFromLooseMoistureSensor == False):
@@ -226,6 +238,8 @@ def checkAndWater():
     #ALARMS
     if alarmTankEmpty:
         log("ALARM !! TANK EMPTY", 1)
+        
+
 
 def measureUS():
     GPIO.output(USTriggerPin, True)
@@ -265,6 +279,12 @@ def getPercFullTank():
         
     return int(distanceEmpty - averageDist)*100/(distanceEmpty-distanceFull)
 
+def writeNewTargetMoistures():
+    with open('settingsMoisture.csv', 'wb') as csvfile:
+        csvwriter = csv.writer(csvfile, delimiter=',',quotechar='"', quoting=csv.QUOTE_MINIMAL)
+        csvwriter.writerow(["Moisture"]+targetMoisture)
+    log("values saved",2)
+
 def readSettingFiles():
     try:
         with open('settingsMoisture.csv') as csvDataFile:
@@ -272,7 +292,7 @@ def readSettingFiles():
             csvReader = csv.reader(csvDataFile)
             for row in csvReader:
                 for i in range(1,len(row)):
-                    log("Sens "+str(hex(addr[i-1]))+ " Target: "+ row[i],3)
+                    log("Sens "+str(hex(addr[i-1]))+ " Target: "+ str(int(row[i])),3)
                     targetMoisture[i-1] = int(row[i])
     except:
         log("Unable to get Moisture Setting File",1)
@@ -305,12 +325,12 @@ def readSettingFiles():
                     
                     if rownumber == 0:
                         sensorMin[i] = int(row[i])
-                        log("Sens "+str(hex(addr[i-1]))+ " Min: "+ row[1],3)
+                        log("Sens "+str(hex(addr[i]))+ " Min: "+ row[i],3)
                         
 
                     else:
                         sensorMax[i] = int(row[i])
-                        log("Sens "+str(hex(addr[i-1]))+ " Max: "+ row[1],3)
+                        log("Sens "+str(hex(addr[i]))+ " Max: "+ row[i],3)
 
                 rownumber += 1
                     
@@ -331,7 +351,7 @@ if __name__ == "__main__":
     sleep (5)
     
     readSettingFiles()
-
+    writeNewTargetMoistures()
     # Blocking call that processes network traffic, dispatches callbacks and
     # handles reconnecting.
     # Other loop*() functions are available that give a threaded interface and a
