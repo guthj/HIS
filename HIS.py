@@ -11,8 +11,8 @@ import paho.mqtt.client as mqtt
 
 os.chdir(os.path.dirname(__file__))
 
-distanceEmpty = 0
-distanceFull = 0
+distanceEmpty = 5
+distanceFull = 50
 
 from smbus2 import SMBus
 i2cbus = SMBus(1)
