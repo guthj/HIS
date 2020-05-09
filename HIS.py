@@ -298,12 +298,14 @@ def readSettingFiles():
     
 if __name__ == "__main__":
     
-    readSettingFiles()
         
     client = mqtt.Client()
     client.on_connect = on_connect
     client.on_message = on_message
     client.connect("10.0.0.16", 1883, 60)
+    
+    sleep (2)
+    readSettingFiles()
 
     # Blocking call that processes network traffic, dispatches callbacks and
     # handles reconnecting.
