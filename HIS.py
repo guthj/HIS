@@ -1,3 +1,11 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""
+
+@author: guth
+"""
+
+
 import RPi.GPIO as GPIO
 import time
 from time import sleep
