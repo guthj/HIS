@@ -175,6 +175,7 @@ def checkAndWater():
     #fist check if water in tank:
     percTank = getPercFullTank()
     log("Tank " + str(percTank) + "% full",2)
+    alarmTankEmpty = False
     if percTank <= 5:
         alarmTankEmpty = True
         log("Tank empty, sending alarm soon, trying to water anyway",1)
