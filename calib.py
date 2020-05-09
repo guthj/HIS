@@ -46,12 +46,12 @@ if not x == "n":
         print (minval[0],minval[1],minval[2],minval[3])
         print (maxval[0],maxval[1],maxval[2],maxval[3])
 
-        with open('settingsMSensor.csv', 'wb') as csvfile:
+        with open('settingsMSensor.csv', 'w') as csvfile:
             spamwriter = csv.writer(csvfile, delimiter=',',quotechar='"', quoting=csv.QUOTE_MINIMAL)
             spamwriter.writerow(minval)
             spamwriter.writerow(maxval)
         print("values saved")
-        with open(HIS.pathSensor, 'wb') as csvfile:
+        with open(HIS.pathSensor, 'w') as csvfile:
             spamwriter = csv.writer(csvfile, delimiter=',',quotechar='"', quoting=csv.QUOTE_MINIMAL)
             spamwriter.writerow(minval)
             spamwriter.writerow(maxval)
@@ -73,7 +73,7 @@ if not x == "n":
         distance = HIS.measureUS()
         avDistanceF += distance/10
         
-    with open(HIS.pathUS, 'wb') as csvfile:
+    with open(HIS.pathUS, 'w') as csvfile:
             spamwriter = csv.writer(csvfile, delimiter=',',quotechar='"', quoting=csv.QUOTE_MINIMAL)
             spamwriter.writerow(["Empty:"]+[avDistanceE])
             spamwriter.writerow(["Full :"]+[avDistanceF])
