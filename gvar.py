@@ -11,7 +11,7 @@ distanceEmpty = 5.0
 distanceFull = 50.0
 
 
-savetyFromLooseMoistureSensor = True
+savetyFromLooseMoistureSensor = False
 
 debuglevel = 5 
 # 0 none
