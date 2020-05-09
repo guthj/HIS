@@ -172,7 +172,7 @@ def checkAndWater():
     client.publish("HIS/Reservoir/Percentage", int(percTank))
     alarmTankEmpty = False
     if percTank <= 5:
-        alarmTankEmpty = True
+        gvar.alarmTankEmpty = True
         log("Tank empty, sending alarm soon, trying to water anyway",1)
     
 
@@ -197,7 +197,9 @@ def checkAndWater():
         client.publish("HIS/Plant"+str(i)+"/WaterTarget/Target", int(targetMoisture[i]))
         client.publish("HIS/Plant"+str(i)+"/WaterTarget/getDecrease", "false")
         client.publish("HIS/Plant"+str(i)+"/WaterTarget/getIncrease", "false")
-
+        if percMoisture < targetMoisture[i]-5:
+            gvar.alarmMoistureLow = True
+            
         if percMoisture < targetMoisture[i] and gvar.enableAutomaticWatering:
             if (percMoisture > 10) or (gvar.savetyFromLooseMoistureSensor == False):
                 wateringNeeded = True
@@ -217,11 +219,20 @@ def checkAndWater():
         closeAllValves()
     
     #ALARMS
-    if alarmTankEmpty:
-        log("ALARM !! TANK EMPTY", 1)
+    if gvar.alarmTankEmpty and gvar.alarmTankEmptyDidAlarm == False:
+        client.publish("HIS/MotionSensor/Alarm/Water", "true")
+        time.sleep(3)
+        client.publish("HIS/MotionSensor/Alarm/Water", "false")
+        gvar.alarmTankEmptyDidAlarm = True
+ 
+    if gvar.alarmMoistureLow and gvar.alarmMoistureLowDidAlarm == False:
+        sleep(10)
+        client.publish("HIS/MotionSensor/Alarm/Moisture", "true")
+        time.sleep(3)
+        client.publish("HIS/MotionSensor/Alarm/Moisture", "false")
+        gvar.alarmTankEmptyDidAlarm = True
+    
         
-
-
 def measureUS():
     GPIO.output(USTriggerPin, True)
 
@@ -265,6 +276,11 @@ def writeNewTargetMoistures():
         csvwriter = csv.writer(csvfile, delimiter=',',quotechar='"', quoting=csv.QUOTE_MINIMAL)
         csvwriter.writerow(["Moisture"]+targetMoisture)
     log("values saved",2)
+
+def resetAlarmSuppression():
+    gvar.alarmTankEmptyDidAlarm = False
+    gvar.alarmMoistureLowDidAlarm = False
+    
 
 def readSettingFiles():
     try:
@@ -344,7 +360,10 @@ if __name__ == "__main__":
 
     scheduler = BackgroundScheduler()
     scheduler.start()
-    scheduler.add_job(checkAndWater, 'interval', minutes=2)
+    scheduler.add_job(checkAndWater, 'interval', minutes=15)
+    
+    scheduler.add_job(resetAlarmSuppression, 'cron', hour=18, minute=0, second=0)
+
     
     try: 
         checkAndWater()

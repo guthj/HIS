@@ -28,3 +28,9 @@ enableAutomaticWatering = True
 pathMoisture = '/home/pi/.HIS/settingsMoisture.csv'
 pathUS = '/home/pi/.HIS/settingsUS.csv'
 pathSensor = '/home/pi/.HIS/settingsMSensor.csv'
+
+
+alarmTankEmpty = False
+alarmTankEmptyDidAlarm = False
+alarmMoistureLow = False
+alarmMoistureLowDidAlarm = False
