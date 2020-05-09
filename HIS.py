@@ -7,14 +7,9 @@ from apscheduler.schedulers.background import BackgroundScheduler
 #import apscheduler.events
 import csv
 import paho.mqtt.client as mqtt
-
+import gvar
 
 os.chdir(os.path.dirname(__file__))
-
-distanceEmpty = 5.0
-distanceFull = 50.0
-
-savetyFromLooseMoistureSensor = True
 
 from smbus2 import SMBus
 i2cbus = SMBus(1)
@@ -29,38 +24,6 @@ for add in addr:
     sensorMin.append(200)
     sensorMax.append(500)
     targetMoisture.append(60)
-
-runPumpSec = 20
-
-enableAutomaticWatering = True
-
-debuglevel = 5 
-# 0 none
-# 1 error
-# 2 notice (default)
-# 3 info
-# 4 debug
-debugStr = ["None  :  ","Error :  ","Notice:  ","Info  :  ","Debug :  "]
-
-
-pathMoisture = '/home/pi/.HIS/settingsMoisture.csv'
-pathUS = '/home/pi/.HIS/settingsUS.csv'
-pathSensor = '/home/pi/.HIS/settingsMSensor.csv'
-
-
-
-#def ap_my_listener(event):
-#        if event.exception:
-#              print (event.exception)
-#              print (event.traceback)
-
-
-def log(text, level):
-    if level <= debuglevel:
-        print(debugStr[level]+text)
-        client.publish("HIS/Log", debugStr[level]+text)
-
-    
 
 
 # GPIO setup
@@ -120,7 +83,7 @@ def on_message(client, userdata, msg):
             if msg.payload == "true":
                 client.publish("HIS/"+plant+"/Pump/getOn", "true")
                 log("Turned on water on "+plant+" via MQTT",2)
-                forceWaterPlant(i,runPumpSec)
+                forceWaterPlant(i,gvar.runPumpSec)
             if msg.payload == "false":
                 client.publish("HIS/"+plant+"/Pump/getOn", "false")
                 closeAllValves()
@@ -138,14 +101,18 @@ def on_message(client, userdata, msg):
     if msg.topic == "HIS/enableAutomaticWatering/setOn":
         if msg.payload == "true":
             client.publish("HIS/enableAutomaticWatering/getOn", "true")
-            enableAutomaticWatering = True
-            log("Tried turning on enableAutomaticWatering, new State: " + str (enableAutomaticWatering),2)
+            gvar.enableAutomaticWatering = True
+            log("Tried turning on enableAutomaticWatering, new State: " + str (gvar.enableAutomaticWatering),2)
         if msg.payload == "false":
             client.publish("HIS/enableAutomaticWatering/getOn", "false")
-            enableAutomaticWatering = False
-            log("tried turning off enableAutomaticWatering, new State: " + str (enableAutomaticWatering),2)
+            gvar.enableAutomaticWatering = False
+            log("tried turning off enableAutomaticWatering, new State: " + str (gvar.enableAutomaticWatering),2)
 
-            
+
+def log(text, level):
+    if level <= gvar.debuglevel:
+        print(gvar.debugStr[level]+text)
+        client.publish("HIS/Log", gvar.debugStr[level]+text)       
         
 def convertMtoPerc(sensor, value):
     return int((value - sensorMin[sensor])*100/(sensorMax[sensor]-sensorMin[sensor]))
@@ -223,8 +190,8 @@ def checkAndWater():
         client.publish("HIS/Plant"+str(i)+"/WaterTarget/getDecrease", "false")
         client.publish("HIS/Plant"+str(i)+"/WaterTarget/getIncrease", "false")
 
-        if percMoisture < targetMoisture[i] and enableAutomaticWatering:
-            if (percMoisture > 10) or (savetyFromLooseMoistureSensor == False):
+        if percMoisture < targetMoisture[i] and gvar.enableAutomaticWatering:
+            if (percMoisture > 10) or (gvar.savetyFromLooseMoistureSensor == False):
                 wateringNeeded = True
                 openValve(valvePins[i])
                 log("Opening Valve " + str(i),2)
@@ -234,10 +201,10 @@ def checkAndWater():
         #sleep for nicer sound
         sleep(1)
     
-    if wateringNeeded and enableAutomaticWatering:
+    if wateringNeeded and gvar.enableAutomaticWatering:
         log("Waiting for Valves to open fully", 2)
         sleep (10)
-        runPump(runPumpSec)
+        runPump(gvar.runPumpSec)
         sleep(5)
         closeAllValves()
     
@@ -268,7 +235,7 @@ def measureUS():
 
 def getPercFullTank():
     distanceA = []
-    log("Measuring Waterlevel (should be between " +str(distanceEmpty)+" and "+str(distanceFull)+"cm )",2)
+    log("Measuring Waterlevel (should be between " +str(gvar.distanceEmpty)+" and "+str(gvar.distanceFull)+"cm )",2)
     for i in range(10):
         distance = measureUS()
         log("Measured Distance " + str(distance)+ "cm",4)
@@ -283,17 +250,17 @@ def getPercFullTank():
         averageDist += a/len(distanceA)
     log("Average distance is " + str(averageDist)+ "cm",2)
         
-    return int(distanceEmpty - averageDist)*100/(distanceEmpty-distanceFull)
+    return int(gvar.distanceEmpty - averageDist)*100/(gvar.distanceEmpty-gvar.distanceFull)
 
 def writeNewTargetMoistures():
-    with open(pathMoisture, 'w') as csvfile:
+    with open(gvar.pathMoisture, 'w') as csvfile:
         csvwriter = csv.writer(csvfile, delimiter=',',quotechar='"', quoting=csv.QUOTE_MINIMAL)
         csvwriter.writerow(["Moisture"]+targetMoisture)
     log("values saved",2)
 
 def readSettingFiles():
     try:
-        with open(pathMoisture) as csvDataFile:
+        with open(gvar.pathMoisture) as csvDataFile:
             log("Setting Moisture Target Values",2)
             csvReader = csv.reader(csvDataFile)
             for row in csvReader:
@@ -302,22 +269,22 @@ def readSettingFiles():
                     targetMoisture[i-1] = int(row[i])
     except:
         log("Unable to get Moisture Setting File",1)
-        if not os.path.isfile(pathMoisture):
+        if not os.path.isfile(gvar.pathMoisture):
             writeNewTargetMoistures()
             
         
 
     try:
-        with open(pathUS) as csvDataFile:
+        with open(gvar.pathUS) as csvDataFile:
             log("Setting Distance Values for US",2)
             csvReader = csv.reader(csvDataFile)
             i=0
             for row in csvReader:
                 if i == 0:
-                    distanceEmpty = float(row[1])
+                    gvar.distanceEmpty = float(row[1])
                     log("Empty: " + row[1],3)
                 else:
-                    distanceFull = float(row[1])
+                    gvar.distanceFull = float(row[1])
                     log("Full: " + row[1],3)
 
                 i += 1                  
@@ -325,7 +292,7 @@ def readSettingFiles():
         log("Unable to read US Settings File. Did you run calib.py?",1)
 
     try:
-        with open(pathSensor) as csvDataFile:
+        with open(gvar.pathSensor) as csvDataFile:
             log("Setting Calib Vals for Moisture Sensors",2)
             csvReader = csv.reader(csvDataFile)
             rownumber=0
