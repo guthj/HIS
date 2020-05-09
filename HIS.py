@@ -11,8 +11,8 @@ import paho.mqtt.client as mqtt
 
 os.chdir(os.path.dirname(__file__))
 
-distanceEmpty = 5
-distanceFull = 50
+distanceEmpty = 5.0
+distanceFull = 50.0
 
 from smbus2 import SMBus
 i2cbus = SMBus(1)
@@ -153,11 +153,16 @@ def closeAllValves():
     GPIO.output(pumpPin, GPIO.HIGH)
     for pin in valvePins:
         GPIO.output(pin, GPIO.HIGH)
+    log("Closed all Relays",2)
+
 
 def runPump(time):
+    log("Starting Pump",2)
     GPIO.output(pumpPin, GPIO.LOW)
     sleep(time)
     GPIO.output(pumpPin, GPIO.HIGH)
+    log("Stopping Pump",2)
+
 
 def getMoisture(addr, bus):
     mois = bus.read_word_data(addr, 0)
@@ -260,10 +265,10 @@ def readSettingFiles():
             csvReader = csv.reader(csvDataFile)
             for row in csvReader:
                 for i in range(1,len(row)):
-                    log("Sens "+str(hex(addr[i-1]))+ ": "+ row[i],2)
+                    log("Sens "+str(hex(addr[i-1]))+ " Target: "+ row[i],3)
                     targetMoisture[i-1] = int(row[i])
     except:
-        print("Unable to get Moisture Setting File",1)
+        log("Unable to get Moisture Setting File",1)
         
 
     try:
@@ -274,8 +279,11 @@ def readSettingFiles():
             for row in csvReader:
                 if i == 0:
                     distanceEmpty = float(row[1])
+                    log("Empty: " + row[1],3)
                 else:
                     distanceFull = float(row[1])
+                    log("Full: " + row[1],3)
+
                 i += 1
                     
     except:
@@ -290,8 +298,13 @@ def readSettingFiles():
                     
                     if rownumber == 0:
                         sensorMin[i] = int(row[i])
+                        log("Sens "+str(hex(addr[i-1]))+ " Min: "+ row[1],3)
+                        
+
                     else:
                         sensorMax[i] = int(row[i])
+                        log("Sens "+str(hex(addr[i-1]))+ " Max: "+ row[1],3)
+
                 rownumber += 1
                     
     except:
@@ -304,19 +317,19 @@ if __name__ == "__main__":
     client.on_connect = on_connect
     client.on_message = on_message
     client.connect("10.0.0.16", 1883, 60)
+    client.loop_start()
+    sleep(2)
+    log("MQTT Started",2)
+    log("Waiting For Everything To Settle",2)
+    sleep (5)
     
-    sleep (2)
     readSettingFiles()
 
     # Blocking call that processes network traffic, dispatches callbacks and
     # handles reconnecting.
     # Other loop*() functions are available that give a threaded interface and a
     # manual interface.
-    client.loop_start()
-    log("MQTT Started",2)
-    
-    log("Waiting For Everything To Settle",2)
-    sleep(2)
+
 
     scheduler = BackgroundScheduler()
     scheduler.start()
