@@ -71,7 +71,7 @@ if not x == "n":
     
     avDistanceF = 0.0
     for i in range (10):
-        distance = gvar.measureUS()
+        distance = HIS.measureUS()
         avDistanceF += distance/10
         
     with open(gvar.pathUS, 'w') as csvfile:
