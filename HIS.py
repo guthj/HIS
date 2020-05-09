@@ -1,30 +1,50 @@
 import RPi.GPIO as GPIO
 import time
 from time import sleep
-import sys
+#import sys
 import os
 from apscheduler.schedulers.background import BackgroundScheduler
-import apscheduler.events
+#import apscheduler.events
+import csv
 
 os.chdir(os.path.dirname(__file__))
+
+distanceEmpty = 0
+distanceFull = 0
 
 from smbus2 import SMBus
 i2cbus = SMBus(1)
 
 addr = [0x20,0x21,0x30,0x31]
 
-targetMoisture = [300, 300, 300, 300]
+sensorMin=[]
+sensorMax=[]
+targetMoisture=[]
+
+for add in addr:
+    sensorMin.append(200)
+    sensorMax.append(500)
+    targetMoisture.append(300)
 
 runPumpSec = 20
 
-def ap_my_listener(event):
-        if event.exception:
-              print (event.exception)
-              print (event.traceback)
+debuglevel = 5 
+# 0 none
+# 1 error
+# 2 notice (default)
+# 3 info
+# 4 debug
 
 
-def log(text):
-    print(text)
+#def ap_my_listener(event):
+#        if event.exception:
+#              print (event.exception)
+#              print (event.traceback)
+
+
+def log(text, level):
+    if level <= debuglevel:
+        print(text)
     
 
 
@@ -51,7 +71,7 @@ GPIO.setup(USEchoPin,GPIO.IN)
 GPIO.output(USTriggerPin, False)
 
 
-log("Waiting For Everything To Settle")
+log("Waiting For Everything To Settle",2)
 
 sleep(2)
 
@@ -81,39 +101,46 @@ def resetSens(addr, bus):
 
 
 def checkAndWater():
-    #get mosisture 3x and average it out
+    #fist check if water in tank:
+    percTank = getPercFullTank()
+    log("Tank " + str(percTank) + "% full",2)
+    if percTank <= 5:
+        alarmTankEmpty = True
+        log("Tank empty, sending alarm soon, trying to water anyway",1)
+
+    
+    
+    #get mosisture 5x and average it out
     moistureArray = []
     wateringNeeded = False
     for i in range(len(addr)):     
         average = 0.0
         for i2 in range(5):
             moist = getMoisture(addr[i], i2cbus)
-            log(str(moist))
+            log("Measurement "+str(i2) + "for Sensor " + str(i)+ ": " +str(moist),4)
             average = moist/5
             #sleep(2)
         moistureArray.append(average)
-        log("Current moisture for "+str(hex(addr[i]))+"("+str(i)+"): " + str(average))
+        log("Current moisture for "+str(hex(addr[i]))+"("+str(i)+"): " + str(average),3)
 
         if average < targetMoisture[i]:
             wateringNeeded = True
             openValve(valvePins[i])
-            log("Opening Valve " + str(i))
-            
+            log("Opening Valve " + str(i),2)
+        #sleep for nicer sound
+        sleep(1)
     
     if wateringNeeded:
-        log("Waiting for Valves to open fully")
+        log("Waiting for Valves to open fully", 2)
         sleep (10)
         runPump(runPumpSec)
         sleep(5)
         closeAllValves()
     
-        
-
-        
+    #ALARMS
+    if alarmTankEmpty:
+        log("ALARM !! TANK EMPTY", 1)
     
-        
-
-
 def playRelay():
 
     
@@ -142,17 +169,72 @@ def measureUS():
     pulse_duration = pulse_end - pulse_start
     distance = pulse_duration * 17150
     distance = round(distance, 2)
-    log("Distance: "+ distance + "cm")
+    log("Distance: "+ distance + "cm",4)
     return distance
+
+def getPercFullTank():
+    distanceA = []
+    for i in range(10):
+        distance = measureUS()
+        log("Measured Distance " + str(distance),4)
+        distanceA.append(distance)
+        sleep(1)
+    if max(distanceA)-min(distanceA)>3:
+        log("Discard " + str(max(distanceA)) + " and " + str(min(distanceA)),3)
+        distanceA.remove(max(distanceA))
+        distanceA.remove(min(distanceA))
+    averageDist = 0
+    for a in distanceA:
+        averageDist += a/len(distanceA)
+    log("Average distance is " + str(averageDist),2)
+        
+    return (distanceEmpty - averageDist)*100/(distanceEmpty-distanceFull)
     
 if __name__ == "__main__":
     scheduler = BackgroundScheduler()
     scheduler.start()
     scheduler.add_job(checkAndWater, 'interval', minutes=2)
-
-    #measure()
-
-
+    
+    try:
+        with open('settingsMoisture.csv') as csvDataFile:
+            log("Setting Moisture Target Values",2)
+            csvReader = csv.reader(csvDataFile)
+            for row in csvReader:
+                for cell in range(1,len(row)):
+                    log("Sens "+str(hex(addr[i-1]))+ ": "+ cell)
+                    targetMoisture[i-1] = int(row[cell])
+    except:
+        print("Unable to get Moisture Setting File",1)
+    try:
+        with open('settingsUS.csv') as csvDataFile:
+            log("Setting Distance Values for US")
+            csvReader = csv.reader(csvDataFile)
+            i=0
+            for row in csvReader:
+                if i == 0:
+                    distanceEmpty = float(row[1])
+                else:
+                    distanceFull = float(row[1])
+                i += 1
+                    
+    except:
+        log("Unable to read US Settings File",1)
+    try:
+        with open('settingsMSensor.csv') as csvDataFile:
+            log("Setting Calib Vals for Moisture Sensors")
+            csvReader = csv.reader(csvDataFile)
+            rownumber=0
+            for row in csvReader:
+                for i in range(len(row)):
+                    
+                    if rownumber == 0:
+                        sensorMin[i] = int(row[i])
+                    else:
+                        sensorMax[i] = int(row[i])
+                rownumber += 1
+                    
+    except:
+        log("Unable to read Calib File for Moisture Sensors",1)
 
 
     try: 

@@ -32,11 +32,12 @@ try:
                 maxval[i] = moist
             
 except KeyboardInterrupt:  
-    print ("exiting program" )
-    with open('config.csv', 'wb') as csvfile:
+    print ("exiting program and saving max and min values" )
+    with open('settingsMSensor.csv', 'wb') as csvfile:
         spamwriter = csv.writer(csvfile, delimiter=',',quotechar='"', quoting=csv.QUOTE_MINIMAL)
         spamwriter.writerow(minval)
         spamwriter.writerow(maxval)
+    print("values saved")
 
 
 finally:  
