@@ -19,6 +19,7 @@ minval = [999,999,999,999]
 maxval = [0,0,0,0]
 
 os.chdir(os.path.dirname(__file__))
+import gvar
 import HIS
 
 if not os.path.exists("/home/pi/.HIS"):
@@ -51,7 +52,7 @@ if not x == "n":
             spamwriter.writerow(minval)
             spamwriter.writerow(maxval)
         print("values saved")
-        with open(HIS.pathSensor, 'w') as csvfile:
+        with open(gvar.pathSensor, 'w') as csvfile:
             spamwriter = csv.writer(csvfile, delimiter=',',quotechar='"', quoting=csv.QUOTE_MINIMAL)
             spamwriter.writerow(minval)
             spamwriter.writerow(maxval)
@@ -70,10 +71,10 @@ if not x == "n":
     
     avDistanceF = 0.0
     for i in range (10):
-        distance = HIS.measureUS()
+        distance = gvar.measureUS()
         avDistanceF += distance/10
         
-    with open(HIS.pathUS, 'w') as csvfile:
+    with open(gvar.pathUS, 'w') as csvfile:
             spamwriter = csv.writer(csvfile, delimiter=',',quotechar='"', quoting=csv.QUOTE_MINIMAL)
             spamwriter.writerow(["Empty:"]+[avDistanceE])
             spamwriter.writerow(["Full :"]+[avDistanceF])
