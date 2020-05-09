@@ -6,6 +6,8 @@ import os
 from apscheduler.schedulers.background import BackgroundScheduler
 #import apscheduler.events
 import csv
+import paho.mqtt.client as mqtt
+
 
 os.chdir(os.path.dirname(__file__))
 
@@ -34,6 +36,7 @@ debuglevel = 5
 # 2 notice (default)
 # 3 info
 # 4 debug
+debugStr = ["None  :  ","Error :  ","Notice:  ","Info  :  ","Debug :  "]
 
 
 #def ap_my_listener(event):
@@ -44,7 +47,9 @@ debuglevel = 5
 
 def log(text, level):
     if level <= debuglevel:
-        print(text)
+        print(debugStr[level]+text)
+        client.publish("HIS/Log", debugStr[level]+text)
+
     
 
 
@@ -74,6 +79,73 @@ GPIO.output(USTriggerPin, False)
 log("Waiting For Everything To Settle",2)
 
 sleep(2)
+
+#Setup MQTT:
+def on_connect(client, userdata, flags, rc):
+    print("Connected with result code "+str(rc))
+    if rc == 0:
+        print("-> This means we connected successfully")
+        log("Connection to server successfull",2)
+    else:
+        print("Major connection error")
+        raise SystemExit
+
+    # Subscribing in on_connect() means that if we lose the connection and
+    # reconnect then subscriptions will be renewed.
+
+    client.subscribe("HIS/Plant0/Pump/setOn")
+    client.subscribe("HIS/enableAutomaticWatering/setOn")
+    client.subscribe("HIS/displayONMode/setOn")
+    client.subscribe("HIS/runLEDs/setOn")
+    client.subscribe("HIS/WaterTarget/setIncrease")
+    client.subscribe("HIS/WaterTarget/setDecrease")
+
+def on_message(client, userdata, msg):
+    print(msg.topic+" "+str(msg.payload))
+    
+    #CHECK FOR PLANT SPECIFIC MESSAGES
+    for i in range(len(addr)):
+        plant = "Plant" + str (i)
+        if msg.topic == "HIS/"+plant+"/Pump/setOn":
+            if msg.payload == "true":
+                client.publish("HIS/"+plant+"/Pump/getOn", "true")
+                log("Turned on water on "+plant+" via MQTT",2)
+                forceWaterPlant(i,runPumpSec)
+            if msg.payload == "false":
+                client.publish("HIS/"+plant+"/Pump/getOn", "false")
+                closeAllValves()
+
+
+        if msg.topic == "HIS/"+plant+"/WaterTarget/setIncrease":
+            state.Moisture_Threshold +=1
+            state.Alarm_Moisture = state.Moisture_Threshold -5
+            client.publish("HIS/"+plant+"/WaterTarget/Target", state.Moisture_Threshold)
+        if msg.topic == "HIS/"+plant+"/WaterTarget/setDecrease":
+            state.Moisture_Threshold -= 1
+            state.Alarm_Moisture = state.Moisture_Threshold -5
+            client.publish("HIS/"+plant+"/WaterTarget/Target", state.Moisture_Threshold)
+            
+            
+    if msg.topic == "HIS/enableAutomaticWatering/setOn":
+        if msg.payload == "true":
+            client.publish("HIS/enableAutomaticWatering/getOn", "true")
+            state.enableAutomaticWatering = True
+            log("Tried turning on enableAutomaticWatering, new State: " + str (state.enableAutomaticWatering),2)
+        if msg.payload == "false":
+            client.publish("HIS/enableAutomaticWatering/getOn", "false")
+            state.enableAutomaticWatering = False
+            log("tried turning off enableAutomaticWatering, new State: " + str (state.enableAutomaticWatering),2)
+
+            
+        
+def convertMtoPerc(sensor, value):
+    return int((value - sensorMin[sensor])*100/(sensorMax[sensor]-sensorMin[sensor]))
+
+def forceWaterPlant(plant, time):
+    openValve(valvePins[plant])
+    sleep(3)
+    runPump(time)
+    closeAllValves()
 
 def openValve(pin):
     GPIO.output(pin, GPIO.LOW)
@@ -122,8 +194,10 @@ def checkAndWater():
             #sleep(2)
         moistureArray.append(average)
         log("Current moisture for "+str(hex(addr[i]))+"("+str(i)+"): " + str(average),3)
+        
+        percMoisture = convertMtoPerc(i,average)
 
-        if average < targetMoisture[i]:
+        if percMoisture < targetMoisture[i]:
             wateringNeeded = True
             openValve(valvePins[i])
             log("Opening Valve " + str(i),2)
@@ -140,17 +214,6 @@ def checkAndWater():
     #ALARMS
     if alarmTankEmpty:
         log("ALARM !! TANK EMPTY", 1)
-    
-def playRelay():
-
-    
-    sleep(1)
-    for i in GPIOPins:
-    
-        GPIO.output(i, GPIO.HIGH) # out
-        sleep(1)
-        GPIO.output(i, GPIO.LOW) # on
-        sleep(1)
 
 def measureUS():
     GPIO.output(USTriggerPin, True)
@@ -189,25 +252,23 @@ def getPercFullTank():
     log("Average distance is " + str(averageDist),2)
         
     return (distanceEmpty - averageDist)*100/(distanceEmpty-distanceFull)
-    
-if __name__ == "__main__":
-    scheduler = BackgroundScheduler()
-    scheduler.start()
-    scheduler.add_job(checkAndWater, 'interval', minutes=2)
-    
+
+def readSettingFiles():
     try:
         with open('settingsMoisture.csv') as csvDataFile:
             log("Setting Moisture Target Values",2)
             csvReader = csv.reader(csvDataFile)
             for row in csvReader:
                 for cell in range(1,len(row)):
-                    log("Sens "+str(hex(addr[i-1]))+ ": "+ cell)
+                    log("Sens "+str(hex(addr[i-1]))+ ": "+ cell,2)
                     targetMoisture[i-1] = int(row[cell])
     except:
         print("Unable to get Moisture Setting File",1)
+        
+
     try:
         with open('settingsUS.csv') as csvDataFile:
-            log("Setting Distance Values for US")
+            log("Setting Distance Values for US",2)
             csvReader = csv.reader(csvDataFile)
             i=0
             for row in csvReader:
@@ -221,7 +282,7 @@ if __name__ == "__main__":
         log("Unable to read US Settings File",1)
     try:
         with open('settingsMSensor.csv') as csvDataFile:
-            log("Setting Calib Vals for Moisture Sensors")
+            log("Setting Calib Vals for Moisture Sensors",2)
             csvReader = csv.reader(csvDataFile)
             rownumber=0
             for row in csvReader:
@@ -234,9 +295,28 @@ if __name__ == "__main__":
                 rownumber += 1
                     
     except:
-        log("Unable to read Calib File for Moisture Sensors",1)
+        log("Unable to read Calib File for moisture Sensors",1)
+    
+if __name__ == "__main__":
+    
+    readSettingFiles()
+        
+    client = mqtt.Client()
+    client.on_connect = on_connect
+    client.on_message = on_message
+    client.connect("10.0.0.16", 1883, 60)
 
-
+    # Blocking call that processes network traffic, dispatches callbacks and
+    # handles reconnecting.
+    # Other loop*() functions are available that give a threaded interface and a
+    # manual interface.
+    client.loop_start()
+    log("MQTT Started",2)
+    
+    scheduler = BackgroundScheduler()
+    scheduler.start()
+    scheduler.add_job(checkAndWater, 'interval', minutes=2)
+    
     try: 
         checkAndWater()
         while True:
