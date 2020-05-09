@@ -194,11 +194,12 @@ def checkAndWater():
         average = 0.0
         for i2 in range(5):
             moist = getMoisture(addr[i], i2cbus)
-            log("Measurement "+str(i2) + "for Sensor " + str(i)+ ": " +str(moist),4)
-            average = moist/5
+            log("Measurement "+str(i2) + "for Sensor " + str(i)+ ": " +str(moist)+" ("+str(convertMtoPerc(i,moist))+"%)",4)
+            average += float(moist)/5
             #sleep(2)
+        average = int(average)
         moistureArray.append(average)
-        log("Current moisture for "+str(hex(addr[i]))+"("+str(i)+"): " + str(average),3)
+        log("Current moisture for "+str(hex(addr[i]))+"("+str(i)+"): " + str(average)+" ("+str(convertMtoPerc(i,moist))+"%)",3)
         
         percMoisture = convertMtoPerc(i,average)
 
@@ -237,14 +238,13 @@ def measureUS():
     pulse_duration = pulse_end - pulse_start
     distance = pulse_duration * 17150
     distance = round(distance, 2)
-    log("Distance: "+ str(distance) + "cm",4)
     return distance
 
 def getPercFullTank():
     distanceA = []
     for i in range(10):
         distance = measureUS()
-        log("Measured Distance " + str(distance),4)
+        log("Measured Distance " + str(distance)+ "cm",4)
         distanceA.append(distance)
         sleep(1)
     if max(distanceA)-min(distanceA)>3:
@@ -254,7 +254,7 @@ def getPercFullTank():
     averageDist = 0
     for a in distanceA:
         averageDist += a/len(distanceA)
-    log("Average distance is " + str(averageDist),2)
+    log("Average distance is " + str(averageDist)+ "cm",2)
         
     return (distanceEmpty - averageDist)*100/(distanceEmpty-distanceFull)
 
