@@ -194,7 +194,7 @@ def checkAndWater():
         average = 0.0
         for i2 in range(5):
             moist = getMoisture(addr[i], i2cbus)
-            log("Measurement "+str(i2) + "for Sensor " + str(i)+ ": " +str(moist)+" ("+str(convertMtoPerc(i,moist))+"%)",4)
+            log("Measurement "+str(i2) + " for Sensor " + str(i)+ ": " +str(moist)+" ("+str(convertMtoPerc(i,moist))+"%)",4)
             average += float(moist)/5
             #sleep(2)
         average = int(average)
@@ -204,9 +204,13 @@ def checkAndWater():
         percMoisture = convertMtoPerc(i,average)
 
         if percMoisture < targetMoisture[i] and enableAutomaticWatering:
-            wateringNeeded = True
-            openValve(valvePins[i])
-            log("Opening Valve " + str(i),2)
+            if percMoisture > 10:
+                wateringNeeded = True
+                openValve(valvePins[i])
+                log("Opening Valve " + str(i),2)
+            else:
+                log("Earth too dry, is Moisture Sensor correctly entered?",1)
+                log("Will therefore not water!!!",1)
         #sleep for nicer sound
         sleep(1)
     
@@ -242,6 +246,7 @@ def measureUS():
 
 def getPercFullTank():
     distanceA = []
+    log("Measuring Waterlevel (should be between " +str(distanceEmpty)+" and "+str(distanceFull)+"cm )",2)
     for i in range(10):
         distance = measureUS()
         log("Measured Distance " + str(distance)+ "cm",4)
@@ -256,7 +261,7 @@ def getPercFullTank():
         averageDist += a/len(distanceA)
     log("Average distance is " + str(averageDist)+ "cm",2)
         
-    return (distanceEmpty - averageDist)*100/(distanceEmpty-distanceFull)
+    return int(distanceEmpty - averageDist)*100/(distanceEmpty-distanceFull)
 
 def readSettingFiles():
     try:
