@@ -43,6 +43,12 @@ debuglevel = 5
 debugStr = ["None  :  ","Error :  ","Notice:  ","Info  :  ","Debug :  "]
 
 
+pathMoisture = '/home/pi/.HIS/settingsMoisture.csv'
+pathUS = '/home/pi/.HIS/settingsUS.csv'
+pathSensor = '/home/pi/.HIS/settingsMSensor.csv'
+
+
+
 #def ap_my_listener(event):
 #        if event.exception:
 #              print (event.exception)
@@ -280,14 +286,14 @@ def getPercFullTank():
     return int(distanceEmpty - averageDist)*100/(distanceEmpty-distanceFull)
 
 def writeNewTargetMoistures():
-    with open('settingsMoisture.csv', 'wb') as csvfile:
+    with open(pathMoisture, 'wb') as csvfile:
         csvwriter = csv.writer(csvfile, delimiter=',',quotechar='"', quoting=csv.QUOTE_MINIMAL)
         csvwriter.writerow(["Moisture"]+targetMoisture)
     log("values saved",2)
 
 def readSettingFiles():
     try:
-        with open('settingsMoisture.csv') as csvDataFile:
+        with open(pathMoisture) as csvDataFile:
             log("Setting Moisture Target Values",2)
             csvReader = csv.reader(csvDataFile)
             for row in csvReader:
@@ -296,10 +302,13 @@ def readSettingFiles():
                     targetMoisture[i-1] = int(row[i])
     except:
         log("Unable to get Moisture Setting File",1)
+        if not os.path.isfile(pathMoisture):
+            writeNewTargetMoistures()
+            
         
 
     try:
-        with open('settingsUS.csv') as csvDataFile:
+        with open(pathUS) as csvDataFile:
             log("Setting Distance Values for US",2)
             csvReader = csv.reader(csvDataFile)
             i=0
@@ -311,12 +320,12 @@ def readSettingFiles():
                     distanceFull = float(row[1])
                     log("Full: " + row[1],3)
 
-                i += 1
-                    
+                i += 1                  
     except:
-        log("Unable to read US Settings File",1)
+        log("Unable to read US Settings File. Did you run calib.py?",1)
+
     try:
-        with open('settingsMSensor.csv') as csvDataFile:
+        with open(pathSensor) as csvDataFile:
             log("Setting Calib Vals for Moisture Sensors",2)
             csvReader = csv.reader(csvDataFile)
             rownumber=0
@@ -335,8 +344,8 @@ def readSettingFiles():
                 rownumber += 1
                     
     except:
-        log("Unable to read Calib File for moisture Sensors",1)
-    
+        log("Unable to read Calib File for moisture Sensors. Did you run calib.py?",1)
+
 if __name__ == "__main__":
     
         
